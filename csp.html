@@ -1,0 +1,1787 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Annapurna — Mid-Day Meal Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root {
+  --saffron: #F4831F;
+  --saffron-light: #FCA44B;
+  --saffron-dark: #C96510;
+  --green: #1A7A4A;
+  --green-light: #2EAB68;
+  --green-pale: #E8F5EE;
+  --cream: #FDF8F0;
+  --warm-white: #FFFDF9;
+  --ink: #1C1410;
+  --ink-mid: #4A3728;
+  --ink-soft: #8B7355;
+  --gold: #D4A017;
+  --gold-light: #F0C040;
+  --red: #C0392B;
+  --red-light: #E74C3C;
+  --blue: #1A5276;
+  --blue-light: #2E86C1;
+  --surface: #FFFFFF;
+  --surface-warm: #FEF9F2;
+  --border: #E8DFD0;
+  --border-soft: #F0E8DC;
+  --shadow-warm: 0 4px 24px rgba(244,131,31,0.12);
+  --shadow-deep: 0 8px 48px rgba(28,20,16,0.15);
+  --radius: 16px;
+  --radius-sm: 8px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Sora', sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── BACKGROUND TEXTURE ─── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(244,131,31,0.06) 0%, transparent 50%),
+    radial-gradient(circle at 85% 80%, rgba(26,122,74,0.06) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(212,160,23,0.03) 0%, transparent 70%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0;
+  width: 260px;
+  background: var(--ink);
+  padding: 0;
+  z-index: 100;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 28px 24px 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(135deg, rgba(244,131,31,0.15), rgba(26,122,74,0.1));
+}
+
+.sidebar-logo {
+  display: flex; align-items: center; gap: 12px;
+}
+
+.logo-icon {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, var(--saffron), var(--saffron-dark));
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 4px 12px rgba(244,131,31,0.4);
+}
+
+.logo-text { color: white; }
+.logo-text .name {
+  font-size: 18px; font-weight: 700; letter-spacing: -0.3px;
+  display: block; line-height: 1.2;
+}
+.logo-text .tagline {
+  font-size: 10px; color: rgba(255,255,255,0.45);
+  letter-spacing: 1.5px; text-transform: uppercase;
+  font-family: 'DM Mono', monospace;
+}
+
+.school-badge {
+  margin: 16px 24px 0;
+  background: rgba(244,131,31,0.12);
+  border: 1px solid rgba(244,131,31,0.25);
+  border-radius: 10px; padding: 10px 14px;
+}
+.school-badge .label { font-size: 9px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1.5px; font-family: 'DM Mono', monospace; }
+.school-badge .school-name { font-size: 13px; color: white; font-weight: 600; margin-top: 2px; }
+
+.sidebar-nav { flex: 1; padding: 20px 0; overflow-y: auto; }
+
+.nav-section-label {
+  font-size: 9px; color: rgba(255,255,255,0.3);
+  letter-spacing: 2px; text-transform: uppercase;
+  font-family: 'DM Mono', monospace;
+  padding: 8px 24px 6px;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  color: rgba(255,255,255,0.55);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 13.5px; font-weight: 500;
+  border-left: 3px solid transparent;
+  margin: 1px 0;
+}
+.nav-item:hover { color: white; background: rgba(255,255,255,0.05); }
+.nav-item.active {
+  color: white;
+  background: rgba(244,131,31,0.15);
+  border-left-color: var(--saffron);
+}
+.nav-item .icon { font-size: 17px; width: 22px; text-align: center; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--saffron); color: white;
+  font-size: 10px; font-weight: 700;
+  padding: 2px 7px; border-radius: 20px;
+  font-family: 'DM Mono', monospace;
+}
+
+.sidebar-footer {
+  padding: 20px 24px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.sdg-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.sdg-badge {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.sdg-badge.sdg2 { background: rgba(229,36,28,0.15); color: #E5241C; border: 1px solid rgba(229,36,28,0.2); }
+.sdg-badge.sdg4 { background: rgba(197,25,45,0.15); color: #C5192D; border: 1px solid rgba(197,25,45,0.2); }
+
+/* ─── MAIN LAYOUT ─── */
+.main {
+  margin-left: 260px;
+  min-height: 100vh;
+  position: relative; z-index: 1;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(253,248,240,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-soft);
+  padding: 0 32px;
+  height: 64px;
+  display: flex; align-items: center; gap: 20px;
+}
+.topbar-title { font-size: 18px; font-weight: 700; color: var(--ink); flex: 1; }
+.topbar-title span { color: var(--saffron); }
+.topbar-date {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px; color: var(--ink-soft);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 6px 14px; border-radius: 8px;
+}
+.topbar-actions { display: flex; gap: 10px; align-items: center; }
+
+/* ─── PAGE SECTIONS ─── */
+.page { display: none; padding: 32px; }
+.page.active { display: block; }
+
+/* ─── SECTION HEADER ─── */
+.section-header {
+  display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 16px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+.section-title { font-size: 26px; font-weight: 800; color: var(--ink); line-height: 1.2; }
+.section-title small { display: block; font-size: 13px; font-weight: 400; color: var(--ink-soft); margin-top: 3px; }
+.section-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ─── BUTTONS ─── */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 10px 18px; border-radius: 10px;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+  border: none; font-family: 'Sora', sans-serif;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--saffron); color: white; box-shadow: 0 3px 12px rgba(244,131,31,0.3); }
+.btn-primary:hover { background: var(--saffron-dark); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(244,131,31,0.4); }
+.btn-green { background: var(--green); color: white; box-shadow: 0 3px 12px rgba(26,122,74,0.3); }
+.btn-green:hover { background: #145f38; transform: translateY(-1px); }
+.btn-outline { background: white; color: var(--ink); border: 1.5px solid var(--border); }
+.btn-outline:hover { border-color: var(--saffron); color: var(--saffron); }
+.btn-ghost { background: transparent; color: var(--ink-soft); border: 1px solid transparent; }
+.btn-ghost:hover { background: rgba(244,131,31,0.08); color: var(--saffron); }
+.btn-danger { background: var(--red); color: white; }
+.btn-danger:hover { background: #a93226; }
+.btn-sm { padding: 7px 13px; font-size: 12px; }
+.btn-xs { padding: 5px 10px; font-size: 11px; border-radius: 7px; }
+
+/* ─── STAT CARDS ─── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 18px; margin-bottom: 32px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  position: relative; overflow: hidden;
+  transition: all 0.25s;
+  cursor: default;
+}
+.stat-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.stat-card.orange::before { background: linear-gradient(90deg, var(--saffron), var(--gold)); }
+.stat-card.green::before { background: linear-gradient(90deg, var(--green), var(--green-light)); }
+.stat-card.blue::before { background: linear-gradient(90deg, var(--blue), var(--blue-light)); }
+.stat-card.red::before { background: linear-gradient(90deg, var(--red), var(--red-light)); }
+.stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-warm); }
+
+.stat-card .icon-wrap {
+  width: 46px; height: 46px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; margin-bottom: 14px;
+}
+.stat-card.orange .icon-wrap { background: rgba(244,131,31,0.1); }
+.stat-card.green .icon-wrap { background: rgba(26,122,74,0.1); }
+.stat-card.blue .icon-wrap { background: rgba(26,82,118,0.1); }
+.stat-card.red .icon-wrap { background: rgba(192,57,43,0.1); }
+
+.stat-card .stat-value { font-size: 32px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+.stat-card.orange .stat-value { color: var(--saffron); }
+.stat-card.green .stat-value { color: var(--green); }
+.stat-card.blue .stat-value { color: var(--blue); }
+.stat-card.red .stat-value { color: var(--red); }
+.stat-card .stat-label { font-size: 12.5px; color: var(--ink-soft); font-weight: 500; }
+.stat-card .stat-change {
+  margin-top: 10px; font-size: 11px; font-weight: 600;
+  font-family: 'DM Mono', monospace;
+  display: flex; align-items: center; gap: 4px;
+}
+.stat-change.up { color: var(--green); }
+.stat-change.down { color: var(--red); }
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.card-header {
+  padding: 18px 22px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+}
+.card-title { font-size: 15px; font-weight: 700; color: var(--ink); }
+.card-subtitle { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+.card-body { padding: 22px; }
+
+/* ─── FORMS ─── */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-size: 12px; font-weight: 600; color: var(--ink-mid); text-transform: uppercase; letter-spacing: 0.7px; }
+.form-control {
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-family: 'Sora', sans-serif;
+  color: var(--ink);
+  background: var(--warm-white);
+  transition: all 0.2s;
+  outline: none;
+}
+.form-control:focus { border-color: var(--saffron); box-shadow: 0 0 0 3px rgba(244,131,31,0.1); }
+.form-control::placeholder { color: rgba(139,115,85,0.5); }
+select.form-control { cursor: pointer; }
+textarea.form-control { resize: vertical; min-height: 80px; }
+
+/* ─── TABLES ─── */
+.table-wrap { overflow-x: auto; }
+table {
+  width: 100%; border-collapse: collapse;
+  font-size: 13px;
+}
+thead th {
+  background: var(--surface-warm);
+  padding: 11px 16px;
+  text-align: left;
+  font-size: 10.5px; font-weight: 700;
+  color: var(--ink-soft);
+  text-transform: uppercase; letter-spacing: 1px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--ink);
+  vertical-align: middle;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: rgba(244,131,31,0.03); }
+.table-id { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink-soft); }
+
+/* ─── BADGES ─── */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+}
+.badge-green { background: rgba(26,122,74,0.1); color: var(--green); }
+.badge-orange { background: rgba(244,131,31,0.1); color: var(--saffron-dark); }
+.badge-red { background: rgba(192,57,43,0.1); color: var(--red); }
+.badge-blue { background: rgba(26,82,118,0.1); color: var(--blue); }
+.badge-gray { background: rgba(139,115,85,0.1); color: var(--ink-soft); }
+
+/* ─── GRID LAYOUTS ─── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.col-7-5 { display: grid; grid-template-columns: 7fr 5fr; gap: 20px; }
+
+/* ─── CHARTS ─── */
+.chart-wrap { position: relative; }
+.chart-wrap canvas { max-width: 100%; }
+
+/* ─── ATTENDANCE SPECIFIC ─── */
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+.class-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border-soft);
+  border-radius: 12px; padding: 16px;
+  text-align: center; cursor: pointer;
+  transition: all 0.2s;
+}
+.class-card:hover { border-color: var(--saffron); transform: translateY(-2px); box-shadow: var(--shadow-warm); }
+.class-card .class-name { font-size: 16px; font-weight: 800; color: var(--ink); }
+.class-card .class-count { font-size: 26px; font-weight: 800; color: var(--saffron); margin: 6px 0 2px; }
+.class-card .class-label { font-size: 11px; color: var(--ink-soft); }
+
+.attendance-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 120px 120px 120px;
+  align-items: center; gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.attendance-row:last-child { border-bottom: none; }
+
+.counter-wrap { display: flex; align-items: center; gap: 8px; }
+.counter-btn {
+  width: 30px; height: 30px; border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: white; cursor: pointer;
+  font-size: 16px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink); transition: all 0.15s;
+}
+.counter-btn:hover { border-color: var(--saffron); color: var(--saffron); }
+.counter-val {
+  min-width: 44px; text-align: center;
+  font-size: 18px; font-weight: 700;
+  color: var(--ink); font-family: 'DM Mono', monospace;
+}
+
+/* ─── PROGRESS BAR ─── */
+.progress-bar { background: var(--border-soft); border-radius: 99px; overflow: hidden; }
+.progress-fill {
+  height: 100%; border-radius: 99px;
+  transition: width 0.5s ease;
+}
+.progress-fill.orange { background: linear-gradient(90deg, var(--saffron), var(--gold-light)); }
+.progress-fill.green { background: linear-gradient(90deg, var(--green), var(--green-light)); }
+
+/* ─── MEAL ITEMS ─── */
+.meal-items-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+.meal-item-card {
+  background: var(--surface); border: 1.5px solid var(--border-soft);
+  border-radius: 12px; padding: 16px 14px;
+  transition: all 0.2s;
+}
+.meal-item-card:hover { border-color: var(--green-light); }
+.meal-item-card .mi-icon { font-size: 28px; margin-bottom: 8px; }
+.meal-item-card .mi-name { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 10px; }
+.meal-item-card .mi-qty-row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.mi-qty-input {
+  width: 65px; padding: 6px 8px;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 600;
+  color: var(--ink); background: var(--warm-white); text-align: center;
+  outline: none;
+}
+.mi-qty-input:focus { border-color: var(--green); }
+.mi-unit { font-size: 11px; color: var(--ink-soft); font-family: 'DM Mono', monospace; }
+
+/* ─── TIMELINE ─── */
+.timeline { position: relative; padding-left: 24px; }
+.timeline::before {
+  content: ''; position: absolute; left: 6px; top: 6px; bottom: 6px;
+  width: 2px; background: var(--border);
+}
+.timeline-item { position: relative; margin-bottom: 20px; }
+.timeline-dot {
+  position: absolute; left: -24px; top: 3px;
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--saffron); background: white;
+}
+.timeline-item.done .timeline-dot { background: var(--saffron); }
+.timeline-content { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 10px; padding: 12px 16px; }
+.timeline-time { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink-soft); margin-bottom: 4px; }
+.timeline-text { font-size: 13px; font-weight: 600; }
+.timeline-sub { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+
+/* ─── REPORT PERIOD SELECTOR ─── */
+.period-tabs { display: flex; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
+.period-tab {
+  padding: 6px 14px; border-radius: 7px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s; color: var(--ink-soft);
+}
+.period-tab.active { background: var(--saffron); color: white; }
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(28,20,16,0.6); backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: white; border-radius: 20px;
+  max-width: 540px; width: 100%;
+  box-shadow: var(--shadow-deep);
+  animation: modalIn 0.25s ease;
+}
+@keyframes modalIn { from { opacity:0; transform:scale(0.95) translateY(10px); } to { opacity:1; transform:scale(1); } }
+.modal-header {
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid var(--border-soft);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-title { font-size: 17px; font-weight: 700; }
+.modal-close { width: 32px; height: 32px; border: none; background: var(--border-soft); border-radius: 8px; cursor: pointer; font-size: 16px; color: var(--ink-soft); }
+.modal-close:hover { background: var(--border); color: var(--ink); }
+.modal-body { padding: 22px 24px; }
+.modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-soft); display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ─── ALERT / TOAST ─── */
+.toast-wrap { position: fixed; top: 80px; right: 24px; z-index: 300; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+.toast {
+  background: var(--ink); color: white;
+  padding: 12px 18px; border-radius: 12px;
+  font-size: 13px; font-weight: 500;
+  box-shadow: var(--shadow-deep);
+  display: flex; align-items: center; gap: 10px;
+  pointer-events: all;
+  animation: toastIn 0.3s ease;
+  min-width: 260px;
+}
+.toast.success { background: var(--green); }
+.toast.error { background: var(--red); }
+@keyframes toastIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+
+/* ─── DASHBOARD SPECIFIC ─── */
+.alert-card {
+  border-radius: 12px; padding: 14px 18px;
+  display: flex; align-items: flex-start; gap: 12px;
+  margin-bottom: 10px;
+}
+.alert-card.warn { background: rgba(244,131,31,0.08); border: 1px solid rgba(244,131,31,0.2); }
+.alert-card.ok { background: rgba(26,122,74,0.08); border: 1px solid rgba(26,122,74,0.2); }
+.alert-card .alert-icon { font-size: 20px; }
+.alert-card .alert-text { font-size: 13px; font-weight: 500; }
+.alert-card .alert-sub { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+
+.quick-stat {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 0; border-bottom: 1px solid var(--border-soft);
+}
+.quick-stat:last-child { border-bottom: none; }
+.quick-stat .qs-label { flex: 1; font-size: 13px; color: var(--ink-mid); }
+.quick-stat .qs-val { font-size: 15px; font-weight: 700; font-family: 'DM Mono', monospace; }
+.quick-stat .qs-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--saffron); }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(139,115,85,0.3); border-radius: 99px; }
+
+/* ─── EMPTY STATE ─── */
+.empty-state { text-align: center; padding: 48px 24px; color: var(--ink-soft); }
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+.empty-state p { font-size: 14px; }
+
+/* ─── UTIL ─── */
+.mb-0{margin-bottom:0!important} .mb-4{margin-bottom:16px} .mb-6{margin-bottom:24px} .mb-8{margin-bottom:32px}
+.mt-4{margin-top:16px} .mt-6{margin-top:24px}
+.gap-4{gap:16px} .gap-3{gap:12px}
+.flex{display:flex} .items-center{align-items:center} .justify-between{justify-content:space-between}
+.w-full{width:100%} .text-right{text-align:right}
+.fw-700{font-weight:700} .fs-13{font-size:13px} .fs-12{font-size:12px}
+.color-green{color:var(--green)} .color-orange{color:var(--saffron)} .color-soft{color:var(--ink-soft)}
+.divider{border:none;border-top:1px solid var(--border-soft);margin:20px 0}
+
+/* ─── RESPONSIVE TWEAKS ─── */
+@media(max-width:1100px) {
+  .two-col, .three-col, .col-7-5 { grid-template-columns: 1fr; }
+}
+
+/* ─── PRINT / PDF styles ─── */
+@media print {
+  .sidebar, .topbar, .section-actions, .btn { display: none !important; }
+  .main { margin-left: 0; }
+  .page { display: block !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🍱</div>
+      <div class="logo-text">
+        <span class="name">Annapurna</span>
+        <span class="tagline">MDM Monitor</span>
+      </div>
+    </div>
+  </div>
+  <div class="school-badge">
+    <div class="label">Active School</div>
+    <div class="school-name">GPS Hyderabad No. 1</div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Main</div>
+    <div class="nav-item active" onclick="navigate('dashboard')"><span class="icon">📊</span> Dashboard</div>
+    <div class="nav-item" onclick="navigate('students')"><span class="icon">🎓</span> Students <span class="nav-badge" id="nav-student-count">0</span></div>
+    <div class="nav-item" onclick="navigate('attendance')"><span class="icon">✅</span> Attendance</div>
+    <div class="nav-item" onclick="navigate('meals')"><span class="icon">🍽️</span> Meal Distribution</div>
+
+    <div class="nav-section-label" style="margin-top:12px">Analytics</div>
+    <div class="nav-item" onclick="navigate('reports')"><span class="icon">📋</span> Reports</div>
+    <div class="nav-item" onclick="navigate('charts')"><span class="icon">📈</span> Charts</div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:10px;letter-spacing:1px;text-transform:uppercase;font-family:'DM Mono',monospace;">Aligned SDGs</div>
+    <div class="sdg-badges">
+      <div class="sdg-badge sdg2">🌾 SDG 2</div>
+      <div class="sdg-badge sdg4">📚 SDG 4</div>
+    </div>
+    <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:14px;line-height:1.6">Zero Hunger · Quality Education</div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-title">Mid-Day Meal <span>Monitoring System</span></div>
+    <div class="topbar-date" id="topbar-date"></div>
+    <div class="topbar-actions">
+      <button class="btn btn-primary btn-sm" onclick="navigate('meals')">+ Log Today's Meal</button>
+    </div>
+  </div>
+
+  <!-- ═══ DASHBOARD ═══ -->
+  <section class="page active" id="page-dashboard">
+    <div class="section-header">
+      <div class="section-title">Dashboard <small>Today's overview at a glance</small></div>
+      <div class="section-actions">
+        <button class="btn btn-outline btn-sm" onclick="refreshDashboard()">🔄 Refresh</button>
+      </div>
+    </div>
+
+    <div class="stats-grid" id="dash-stats">
+      <div class="stat-card orange">
+        <div class="icon-wrap">🎓</div>
+        <div class="stat-value" id="ds-students">0</div>
+        <div class="stat-label">Total Students</div>
+        <div class="stat-change up" id="ds-students-c">↑ Active records</div>
+      </div>
+      <div class="stat-card green">
+        <div class="icon-wrap">✅</div>
+        <div class="stat-value" id="ds-present">0</div>
+        <div class="stat-label">Present Today</div>
+        <div class="stat-change up" id="ds-att-pct">— %</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="icon-wrap">🍱</div>
+        <div class="stat-value" id="ds-meals">0</div>
+        <div class="stat-label">Meals Served</div>
+        <div class="stat-change up" id="ds-meals-note">Today's count</div>
+      </div>
+      <div class="stat-card red">
+        <div class="icon-wrap">❌</div>
+        <div class="stat-value" id="ds-absent">0</div>
+        <div class="stat-label">Absent Today</div>
+        <div class="stat-change down" id="ds-absent-note">Meals saved</div>
+      </div>
+    </div>
+
+    <div class="col-7-5">
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">📅 Weekly Attendance Overview</div><div class="card-subtitle">Mon–Fri this week</div></div>
+        </div>
+        <div class="card-body">
+          <div class="chart-wrap" style="height:220px"><canvas id="dash-weekly-chart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">🔔 Alerts & Status</div></div>
+        <div class="card-body">
+          <div id="alert-area"></div>
+          <div style="margin-top:16px">
+            <div class="quick-stat"><div class="qs-dot" style="background:var(--saffron)"></div><div class="qs-label">Avg Daily Attendance</div><div class="qs-val" id="qs-avg">—</div></div>
+            <div class="quick-stat"><div class="qs-dot" style="background:var(--green)"></div><div class="qs-label">Meals This Month</div><div class="qs-val" id="qs-month">—</div></div>
+            <div class="quick-stat"><div class="qs-dot" style="background:var(--blue-light)"></div><div class="qs-label">Attendance Rate</div><div class="qs-val" id="qs-rate">—</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🕐 Today's Activity Log</div>
+        </div>
+        <div class="card-body">
+          <div class="timeline" id="activity-timeline">
+            <div class="timeline-item done">
+              <div class="timeline-dot"></div>
+              <div class="timeline-content">
+                <div class="timeline-time">08:00 AM</div>
+                <div class="timeline-text">School Day Started</div>
+                <div class="timeline-sub">System initialized for today's tracking</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ STUDENTS ═══ -->
+  <section class="page" id="page-students">
+    <div class="section-header">
+      <div class="section-title">Student Management <small>Enroll and manage student records</small></div>
+      <div class="section-actions">
+        <button class="btn btn-primary" onclick="openModal('modal-add-student')">+ Add Student</button>
+        <button class="btn btn-outline" onclick="exportStudentsPDF()">⬇ Export PDF</button>
+      </div>
+    </div>
+
+    <div class="card mb-6">
+      <div class="card-header">
+        <div class="card-title">🔍 Search & Filter</div>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Search by Name / ID</label>
+            <input class="form-control" id="student-search" placeholder="Type to search..." oninput="renderStudentTable()">
+          </div>
+          <div class="form-group">
+            <label>Filter by Class</label>
+            <select class="form-control" id="student-filter-class" onchange="renderStudentTable()">
+              <option value="">All Classes</option>
+              <option>Class 1</option><option>Class 2</option><option>Class 3</option>
+              <option>Class 4</option><option>Class 5</option><option>Class 6</option>
+              <option>Class 7</option><option>Class 8</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Gender</label>
+            <select class="form-control" id="student-filter-gender" onchange="renderStudentTable()">
+              <option value="">All</option><option>Male</option><option>Female</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">📋 Student Records</div><div class="card-subtitle" id="student-count-label">Loading...</div></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Name</th><th>Class</th><th>Section</th>
+              <th>Gender</th><th>Guardian</th><th>Contact</th><th>Category</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="student-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ ATTENDANCE ═══ -->
+  <section class="page" id="page-attendance">
+    <div class="section-header">
+      <div class="section-title">Attendance Tracking <small>Mark daily attendance class-wise</small></div>
+      <div class="section-actions">
+        <input type="date" class="form-control" id="att-date" style="width:170px">
+        <button class="btn btn-primary" onclick="saveAttendance()">💾 Save Attendance</button>
+        <button class="btn btn-outline" onclick="exportAttendancePDF()">⬇ PDF</button>
+      </div>
+    </div>
+
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px" id="att-summary-cards"></div>
+
+    <div class="two-col mb-6">
+      <div class="card">
+        <div class="card-header"><div class="card-title">📝 Class-wise Entry</div></div>
+        <div class="card-body">
+          <div class="class-grid" id="class-grid"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">📊 Today's Breakdown</div></div>
+        <div class="card-body">
+          <div class="chart-wrap" style="height:200px"><canvas id="att-doughnut"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">📋 Detailed Roll</div><div class="card-subtitle">Mark individual students</div></div>
+        <div class="section-actions">
+          <button class="btn btn-ghost btn-sm" onclick="markAllPresent()">✅ All Present</button>
+          <button class="btn btn-ghost btn-sm" onclick="markAllAbsent()">❌ All Absent</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="form-group mb-4" style="max-width:200px">
+          <label>Filter Class</label>
+          <select class="form-control" id="att-class-filter" onchange="renderAttRoll()">
+            <option value="">All Classes</option>
+            <option>Class 1</option><option>Class 2</option><option>Class 3</option>
+            <option>Class 4</option><option>Class 5</option><option>Class 6</option>
+            <option>Class 7</option><option>Class 8</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Student Name</th><th>Class</th><th>Status</th><th>Remarks</th></tr></thead>
+            <tbody id="att-roll-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ MEALS ═══ -->
+  <section class="page" id="page-meals">
+    <div class="section-header">
+      <div class="section-title">Meal Distribution <small>Log and track daily meal consumption</small></div>
+      <div class="section-actions">
+        <input type="date" class="form-control" id="meal-date" style="width:170px">
+        <button class="btn btn-green" onclick="saveMealRecord()">💾 Save Record</button>
+        <button class="btn btn-outline" onclick="exportMealsPDF()">⬇ PDF</button>
+      </div>
+    </div>
+
+    <div class="two-col mb-6">
+      <div class="card">
+        <div class="card-header"><div class="card-title">🍽️ Today's Menu & Quantities</div></div>
+        <div class="card-body">
+          <div class="form-group mb-4">
+            <label>Menu of the Day</label>
+            <input class="form-control" id="meal-menu" placeholder="e.g. Rice, Dal, Vegetables, Egg...">
+          </div>
+          <div class="meal-items-grid" id="meal-items-grid"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">📊 Distribution Stats</div></div>
+        <div class="card-body">
+          <div id="meal-stats-body"></div>
+          <hr class="divider">
+          <div class="form-group">
+            <label>Notes / Remarks</label>
+            <textarea class="form-control" id="meal-notes" placeholder="Any special notes for today..."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📅 Meal Distribution Log</div>
+        <button class="btn btn-outline btn-sm" onclick="openModal('modal-add-meal-log')">+ Manual Entry</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Menu</th><th>Enrolled</th><th>Present</th><th>Meals Served</th><th>Wastage</th><th>Status</th><th>Notes</th></tr>
+          </thead>
+          <tbody id="meal-log-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ REPORTS ═══ -->
+  <section class="page" id="page-reports">
+    <div class="section-header">
+      <div class="section-title">Reports <small>Monthly and custom date range reports</small></div>
+      <div class="section-actions">
+        <div class="period-tabs">
+          <div class="period-tab active" onclick="setPeriod('week',this)">Week</div>
+          <div class="period-tab" onclick="setPeriod('month',this)">Month</div>
+          <div class="period-tab" onclick="setPeriod('quarter',this)">Quarter</div>
+        </div>
+        <button class="btn btn-primary" onclick="generateReport()">📋 Generate</button>
+        <button class="btn btn-outline" onclick="exportReportPDF()">⬇ Export PDF</button>
+      </div>
+    </div>
+
+    <div class="two-col mb-6">
+      <div class="card">
+        <div class="card-header"><div class="card-title">📅 Date Range</div></div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group"><label>From Date</label><input type="date" class="form-control" id="report-from"></div>
+            <div class="form-group"><label>To Date</label><input type="date" class="form-control" id="report-to"></div>
+          </div>
+          <div class="mt-4"><button class="btn btn-primary w-full" onclick="generateReport()">Generate Report</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">📊 Summary Metrics</div></div>
+        <div class="card-body" id="report-metrics"></div>
+      </div>
+    </div>
+
+    <div class="card" id="report-table-card">
+      <div class="card-header"><div class="card-title">📋 Detailed Report</div></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Day</th><th>Present</th><th>Absent</th><th>Meals Served</th><th>Att %</th><th>Status</th></tr></thead>
+          <tbody id="report-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CHARTS ═══ -->
+  <section class="page" id="page-charts">
+    <div class="section-header">
+      <div class="section-title">Analytics & Charts <small>Visual insights on attendance and meals</small></div>
+      <div class="section-actions">
+        <button class="btn btn-outline btn-sm" onclick="refreshCharts()">🔄 Refresh Charts</button>
+      </div>
+    </div>
+
+    <div class="two-col mb-6">
+      <div class="card">
+        <div class="card-header"><div class="card-title">📈 30-Day Attendance Trend</div></div>
+        <div class="card-body"><div class="chart-wrap" style="height:250px"><canvas id="chart-att-trend"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">🍱 Meal Distribution Trend</div></div>
+        <div class="card-body"><div class="chart-wrap" style="height:250px"><canvas id="chart-meal-trend"></canvas></div></div>
+      </div>
+    </div>
+
+    <div class="three-col mb-6">
+      <div class="card">
+        <div class="card-header"><div class="card-title">🎓 Class-wise Enrolment</div></div>
+        <div class="card-body"><div class="chart-wrap" style="height:220px"><canvas id="chart-class-enrol"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">⚥ Gender Distribution</div></div>
+        <div class="card-body"><div class="chart-wrap" style="height:220px"><canvas id="chart-gender"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">📅 Monthly Avg Attendance</div></div>
+        <div class="card-body"><div class="chart-wrap" style="height:220px"><canvas id="chart-monthly-avg"></canvas></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">📊 Attendance vs Meals Comparison</div></div>
+      <div class="card-body"><div class="chart-wrap" style="height:280px"><canvas id="chart-compare"></canvas></div></div>
+    </div>
+  </section>
+</main>
+
+<!-- ═══ MODALS ═══ -->
+
+<!-- Add Student Modal -->
+<div class="modal-overlay" id="modal-add-student">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">➕ Add New Student</div>
+      <button class="modal-close" onclick="closeModal('modal-add-student')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input class="form-control" id="s-name" placeholder="Student full name">
+        </div>
+        <div class="form-group">
+          <label>Class *</label>
+          <select class="form-control" id="s-class">
+            <option>Class 1</option><option>Class 2</option><option>Class 3</option>
+            <option>Class 4</option><option>Class 5</option><option>Class 6</option>
+            <option>Class 7</option><option>Class 8</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Section</label>
+          <select class="form-control" id="s-section">
+            <option>A</option><option>B</option><option>C</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Gender *</label>
+          <select class="form-control" id="s-gender">
+            <option>Male</option><option>Female</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Guardian Name</label>
+          <input class="form-control" id="s-guardian" placeholder="Parent/Guardian">
+        </div>
+        <div class="form-group">
+          <label>Contact Number</label>
+          <input class="form-control" id="s-contact" placeholder="10-digit number" maxlength="10">
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select class="form-control" id="s-category">
+            <option>General</option><option>SC</option><option>ST</option><option>OBC</option><option>EWS</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date of Birth</label>
+          <input type="date" class="form-control" id="s-dob">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-add-student')">Cancel</button>
+      <button class="btn btn-primary" onclick="addStudent()">Add Student</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manual Meal Log Modal -->
+<div class="modal-overlay" id="modal-add-meal-log">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🍱 Add Meal Log Entry</div>
+      <button class="modal-close" onclick="closeModal('modal-add-meal-log')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Date</label><input type="date" class="form-control" id="ml-date"></div>
+        <div class="form-group"><label>Menu</label><input class="form-control" id="ml-menu" placeholder="Rice, Dal, Veg..."></div>
+        <div class="form-group"><label>Students Present</label><input type="number" class="form-control" id="ml-present" placeholder="0" min="0"></div>
+        <div class="form-group"><label>Meals Served</label><input type="number" class="form-control" id="ml-served" placeholder="0" min="0"></div>
+        <div class="form-group"><label>Wastage (plates)</label><input type="number" class="form-control" id="ml-waste" placeholder="0" min="0"></div>
+        <div class="form-group"><label>Status</label>
+          <select class="form-control" id="ml-status"><option>Completed</option><option>Partial</option><option>Not Served</option></select>
+        </div>
+      </div>
+      <div class="form-group mt-4"><label>Notes</label><textarea class="form-control" id="ml-notes" placeholder="Any remarks..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-add-meal-log')">Cancel</button>
+      <button class="btn btn-green" onclick="addMealLog()">Save Entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// DATA STORE
+// ═══════════════════════════════════════════
+let students = JSON.parse(localStorage.getItem('annapurna_students') || '[]');
+let attendanceData = JSON.parse(localStorage.getItem('annapurna_attendance') || '{}');
+let mealLogs = JSON.parse(localStorage.getItem('annapurna_meals') || '[]');
+let charts = {};
+
+const CLASSES = ['Class 1','Class 2','Class 3','Class 4','Class 5','Class 6','Class 7','Class 8'];
+const MEAL_ITEMS = [
+  {name:'Rice', icon:'🍚', unit:'kg'},
+  {name:'Dal', icon:'🥘', unit:'kg'},
+  {name:'Vegetables', icon:'🥦', unit:'kg'},
+  {name:'Eggs', icon:'🥚', unit:'pcs'},
+  {name:'Milk', icon:'🥛', unit:'ltr'},
+  {name:'Wheat/Roti', icon:'🫓', unit:'kg'},
+  {name:'Oil', icon:'🫙', unit:'ltr'},
+  {name:'Salt & Spices', icon:'🧂', unit:'gm'},
+];
+
+// Seed data if empty
+function seedData() {
+  if (students.length > 0) return;
+  const names = ['Aarav Singh','Priya Sharma','Rahul Kumar','Sneha Patel','Arjun Reddy','Kavitha Nair',
+    'Ravi Teja','Lakshmi Devi','Sai Krishna','Meera Rao','Suresh Babu','Ananya Iyer',
+    'Vijay Kumar','Divya Menon','Arun Chandra','Pooja Verma','Kiran Bose','Swati Jha',
+    'Manish Gupta','Asha Nair','Deepak Sharma','Sunita Yadav','Ramesh Pillai','Geetha Reddy',
+    'Naresh Babu','Sarika Singh','Aditya Rao','Bhavana Patel','Chetan Joshi','Nisha Kumar'];
+  const classes = CLASSES;
+  names.forEach((name, i) => {
+    students.push({
+      id: 'S' + String(i+1).padStart(3,'0'),
+      name, class: classes[i % 8],
+      section: ['A','B','C'][i % 3],
+      gender: i % 2 === 0 ? 'Male' : 'Female',
+      guardian: 'Guardian of ' + name.split(' ')[0],
+      contact: '98' + String(Math.floor(Math.random()*100000000)).padStart(8,'0'),
+      category: ['General','SC','ST','OBC','EWS'][i % 5],
+      dob: '2012-0' + (1 + i%9) + '-' + (10 + i%19),
+      enrolled: true
+    });
+  });
+  saveStudents();
+
+  // Seed 30 days of attendance
+  for (let d = 29; d >= 0; d--) {
+    const dt = new Date(); dt.setDate(dt.getDate() - d);
+    if (dt.getDay() === 0 || dt.getDay() === 6) continue;
+    const dateStr = dt.toISOString().split('T')[0];
+    const rec = {};
+    students.forEach(s => { rec[s.id] = Math.random() > 0.15 ? 'present' : 'absent'; });
+    attendanceData[dateStr] = rec;
+  }
+  saveAttendance();
+
+  // Seed meal logs
+  for (let d = 29; d >= 0; d--) {
+    const dt = new Date(); dt.setDate(dt.getDate() - d);
+    if (dt.getDay() === 0 || dt.getDay() === 6) continue;
+    const dateStr = dt.toISOString().split('T')[0];
+    const present = students.filter(s => attendanceData[dateStr] && attendanceData[dateStr][s.id] === 'present').length;
+    mealLogs.push({
+      date: dateStr, menu: ['Rice, Dal, Egg','Rice, Dal, Vegetables','Khichdi, Pickle','Pulao, Raita','Roti, Sabzi'][d%5],
+      enrolled: students.length, present, served: present - Math.floor(Math.random()*2),
+      wastage: Math.floor(Math.random()*3), status:'Completed', notes:''
+    });
+  }
+  saveMeals();
+}
+
+function saveStudents() { localStorage.setItem('annapurna_students', JSON.stringify(students)); updateNavCount(); }
+function saveAttendance() { localStorage.setItem('annapurna_attendance', JSON.stringify(attendanceData)); }
+function saveMeals() { localStorage.setItem('annapurna_meals', JSON.stringify(mealLogs)); }
+function updateNavCount() { document.getElementById('nav-student-count').textContent = students.length; }
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick').includes("'" + page + "'")) n.classList.add('active');
+  });
+
+  const titles = { dashboard:'Dashboard', students:'Student Management', attendance:'Attendance', meals:'Meal Distribution', reports:'Reports', charts:'Charts' };
+  document.querySelector('.topbar-title').innerHTML = titles[page] + ' <span style="color:var(--saffron)">— Annapurna</span>';
+
+  if (page === 'dashboard') { refreshDashboard(); }
+  if (page === 'students') { renderStudentTable(); }
+  if (page === 'attendance') { initAttendance(); }
+  if (page === 'meals') { initMeals(); }
+  if (page === 'reports') { initReports(); }
+  if (page === 'charts') { setTimeout(renderCharts, 100); }
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════
+function refreshDashboard() {
+  const today = todayStr();
+  const todayAtt = attendanceData[today] || {};
+  const present = students.filter(s => todayAtt[s.id] === 'present').length;
+  const absent = students.length - present;
+  const todayMeal = mealLogs.find(m => m.date === today);
+  const meals = todayMeal ? todayMeal.served : present;
+  const attPct = students.length > 0 ? Math.round(present / students.length * 100) : 0;
+
+  document.getElementById('ds-students').textContent = students.length;
+  document.getElementById('ds-present').textContent = present;
+  document.getElementById('ds-absent').textContent = absent;
+  document.getElementById('ds-meals').textContent = meals;
+  document.getElementById('ds-att-pct').textContent = `↑ ${attPct}% attendance rate`;
+  document.getElementById('ds-meals-note').textContent = `≈ ${meals} plates distributed`;
+  document.getElementById('ds-absent-note').textContent = `${absent} meals saved`;
+
+  // Alerts
+  const alertArea = document.getElementById('alert-area');
+  let alertsHTML = '';
+  if (attPct >= 80) alertsHTML += `<div class="alert-card ok"><div class="alert-icon">✅</div><div><div class="alert-text">Attendance is on track today</div><div class="alert-sub">${attPct}% students present</div></div></div>`;
+  else if (students.length > 0) alertsHTML += `<div class="alert-card warn"><div class="alert-icon">⚠️</div><div><div class="alert-text">Low attendance alert</div><div class="alert-sub">Only ${attPct}% present — check records</div></div></div>`;
+  if (!todayMeal && present > 0) alertsHTML += `<div class="alert-card warn"><div class="alert-icon">🍱</div><div><div class="alert-text">Meal record pending</div><div class="alert-sub">No meal log entry for today yet</div></div></div>`;
+  alertArea.innerHTML = alertsHTML || '<div class="alert-card ok"><div class="alert-icon">🟢</div><div><div class="alert-text">All systems normal</div><div class="alert-sub">No alerts for today</div></div></div>';
+
+  // Quick stats
+  const last7 = getLastNDays(7);
+  const avgAtt = Math.round(last7.reduce((s,d) => {
+    const att = attendanceData[d] || {};
+    return s + Object.values(att).filter(v => v === 'present').length;
+  }, 0) / Math.max(1, last7.length));
+  const monthMeals = mealLogs.filter(m => m.date.startsWith(today.substr(0,7))).reduce((s,m) => s+m.served, 0);
+  const rates = last7.map(d => { const att = attendanceData[d] || {}; const p = Object.values(att).filter(v=>v==='present').length; return students.length ? Math.round(p/students.length*100) : 0; }).filter(r => r > 0);
+  document.getElementById('qs-avg').textContent = avgAtt + ' / day';
+  document.getElementById('qs-month').textContent = monthMeals + ' meals';
+  document.getElementById('qs-rate').textContent = (rates.length ? Math.round(rates.reduce((a,b)=>a+b,0)/rates.length) : 0) + '%';
+
+  // Weekly chart
+  renderWeeklyChart();
+}
+
+function renderWeeklyChart() {
+  const days = ['Mon','Tue','Wed','Thu','Fri'];
+  const week = [];
+  const today = new Date();
+  let day = new Date(today);
+  day.setDate(day.getDate() - day.getDay() + 1);
+  for (let i = 0; i < 5; i++) {
+    week.push(day.toISOString().split('T')[0]);
+    day.setDate(day.getDate() + 1);
+  }
+  const present = week.map(d => Object.values(attendanceData[d] || {}).filter(v=>v==='present').length);
+  const absent = week.map(d => students.length - (Object.values(attendanceData[d] || {}).filter(v=>v==='present').length));
+
+  if (charts['dash-weekly']) { charts['dash-weekly'].destroy(); }
+  const ctx = document.getElementById('dash-weekly-chart').getContext('2d');
+  charts['dash-weekly'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: days,
+      datasets: [
+        { label:'Present', data:present, backgroundColor:'rgba(26,122,74,0.75)', borderRadius:6, borderSkipped:false },
+        { label:'Absent', data:absent, backgroundColor:'rgba(244,131,31,0.45)', borderRadius:6, borderSkipped:false }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'bottom', labels:{font:{size:11},boxWidth:12} } },
+      scales:{ x:{grid:{display:false}}, y:{grid:{color:'rgba(0,0,0,0.04)'}, beginAtZero:true} }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════
+// STUDENTS
+// ═══════════════════════════════════════════
+let studentToDelete = null;
+
+function renderStudentTable() {
+  const q = document.getElementById('student-search').value.toLowerCase();
+  const cls = document.getElementById('student-filter-class').value;
+  const gen = document.getElementById('student-filter-gender').value;
+  const filtered = students.filter(s =>
+    (!q || s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q)) &&
+    (!cls || s.class === cls) &&
+    (!gen || s.gender === gen)
+  );
+  document.getElementById('student-count-label').textContent = `${filtered.length} of ${students.length} students`;
+  const tbody = document.getElementById('student-tbody');
+  if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🎓</div><p>No students found</p></div></td></tr>'; return; }
+  tbody.innerHTML = filtered.map((s,i) => `
+    <tr>
+      <td><span class="table-id">${s.id}</span></td>
+      <td><strong>${s.name}</strong></td>
+      <td>${s.class}</td>
+      <td>Section ${s.section}</td>
+      <td><span class="badge ${s.gender==='Male'?'badge-blue':'badge-orange'}">${s.gender}</span></td>
+      <td>${s.guardian || '—'}</td>
+      <td><span style="font-family:'DM Mono',monospace;font-size:12px">${s.contact || '—'}</span></td>
+      <td><span class="badge badge-gray">${s.category}</span></td>
+      <td><button class="btn btn-danger btn-xs" onclick="deleteStudent('${s.id}')">Delete</button></td>
+    </tr>
+  `).join('');
+}
+
+function addStudent() {
+  const name = document.getElementById('s-name').value.trim();
+  if (!name) { toast('Please enter student name', 'error'); return; }
+  const s = {
+    id: 'S' + String(students.length + 1).padStart(3,'0'),
+    name, class: document.getElementById('s-class').value,
+    section: document.getElementById('s-section').value,
+    gender: document.getElementById('s-gender').value,
+    guardian: document.getElementById('s-guardian').value,
+    contact: document.getElementById('s-contact').value,
+    category: document.getElementById('s-category').value,
+    dob: document.getElementById('s-dob').value, enrolled: true
+  };
+  students.push(s);
+  saveStudents();
+  renderStudentTable();
+  closeModal('modal-add-student');
+  toast(`Student ${name} added successfully`, 'success');
+  addActivity(`New student enrolled: ${name} (${s.class})`);
+  document.getElementById('s-name').value = '';
+}
+
+function deleteStudent(id) {
+  if (!confirm('Delete this student record?')) return;
+  students = students.filter(s => s.id !== id);
+  saveStudents();
+  renderStudentTable();
+  toast('Student record deleted', 'success');
+}
+
+function exportStudentsPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(18); doc.setTextColor(244,131,31);
+  doc.text('Annapurna — Student Register', 14, 20);
+  doc.setFontSize(10); doc.setTextColor(100);
+  doc.text(`GPS Hyderabad No. 1 | Total: ${students.length} students | Generated: ${new Date().toLocaleDateString()}`, 14, 28);
+  doc.autoTable({
+    startY: 34,
+    head: [['ID','Name','Class','Section','Gender','Guardian','Contact','Category']],
+    body: students.map(s => [s.id,s.name,s.class,'Sec '+s.section,s.gender,s.guardian||'-',s.contact||'-',s.category]),
+    styles:{ fontSize:9, cellPadding:4 },
+    headStyles:{ fillColor:[244,131,31], textColor:255, fontStyle:'bold' },
+    alternateRowStyles:{ fillColor:[255,248,240] }
+  });
+  doc.save('Student_Register.pdf');
+  toast('PDF exported!', 'success');
+}
+
+// ═══════════════════════════════════════════
+// ATTENDANCE
+// ═══════════════════════════════════════════
+function initAttendance() {
+  document.getElementById('att-date').value = todayStr();
+  renderAttSummary();
+  renderClassGrid();
+  renderAttRoll();
+  renderAttDoughnut();
+}
+
+function renderAttSummary() {
+  const dateStr = document.getElementById('att-date').value || todayStr();
+  const att = attendanceData[dateStr] || {};
+  const total = students.length;
+  const present = Object.values(att).filter(v=>v==='present').length;
+  const absent = total - present;
+  const pct = total > 0 ? Math.round(present/total*100) : 0;
+  document.getElementById('att-summary-cards').innerHTML = `
+    <div class="stat-card orange"><div class="icon-wrap">👨‍🎓</div><div class="stat-value" style="color:var(--saffron)">${total}</div><div class="stat-label">Total Enrolled</div></div>
+    <div class="stat-card green"><div class="icon-wrap">✅</div><div class="stat-value" style="color:var(--green)">${present}</div><div class="stat-label">Present</div></div>
+    <div class="stat-card red"><div class="icon-wrap">❌</div><div class="stat-value" style="color:var(--red)">${absent}</div><div class="stat-label">Absent</div></div>
+    <div class="stat-card blue"><div class="icon-wrap">📊</div><div class="stat-value" style="color:var(--blue)">${pct}%</div><div class="stat-label">Attendance Rate</div></div>
+  `;
+}
+
+function renderClassGrid() {
+  const dateStr = document.getElementById('att-date').value || todayStr();
+  const att = attendanceData[dateStr] || {};
+  const html = CLASSES.map(cls => {
+    const total = students.filter(s => s.class === cls).length;
+    const present = students.filter(s => s.class === cls && att[s.id] === 'present').length;
+    return `<div class="class-card" onclick="filterAttByClass('${cls}')">
+      <div class="class-name">${cls.replace('Class ','C')}</div>
+      <div class="class-count">${present}</div>
+      <div class="class-label">of ${total} present</div>
+    </div>`;
+  }).join('');
+  document.getElementById('class-grid').innerHTML = html;
+}
+
+function filterAttByClass(cls) {
+  document.getElementById('att-class-filter').value = cls;
+  renderAttRoll();
+}
+
+function renderAttRoll() {
+  const dateStr = document.getElementById('att-date').value || todayStr();
+  const att = attendanceData[dateStr] || {};
+  const filterCls = document.getElementById('att-class-filter').value;
+  const filtered = students.filter(s => !filterCls || s.class === filterCls);
+  const tbody = document.getElementById('att-roll-tbody');
+  if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📋</div><p>No students found</p></div></td></tr>'; return; }
+  tbody.innerHTML = filtered.map((s, i) => {
+    const status = att[s.id] || 'absent';
+    return `<tr>
+      <td class="table-id">${i+1}</td>
+      <td><strong>${s.name}</strong></td>
+      <td><span class="badge badge-gray">${s.class}</span></td>
+      <td>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="att-${s.id}" ${status==='present'?'checked':''} onchange="toggleAtt('${s.id}')" style="width:16px;height:16px;accent-color:var(--green)">
+          <span id="att-lbl-${s.id}" class="badge ${status==='present'?'badge-green':'badge-red'}">${status==='present'?'Present':'Absent'}</span>
+        </label>
+      </td>
+      <td><input class="form-control" style="height:32px;font-size:12px;padding:4px 10px" id="att-rem-${s.id}" placeholder="Remark..."></td>
+    </tr>`;
+  }).join('');
+}
+
+function toggleAtt(id) {
+  const dateStr = document.getElementById('att-date').value || todayStr();
+  if (!attendanceData[dateStr]) attendanceData[dateStr] = {};
+  const chk = document.getElementById('att-' + id);
+  attendanceData[dateStr][id] = chk.checked ? 'present' : 'absent';
+  const lbl = document.getElementById('att-lbl-' + id);
+  lbl.className = 'badge ' + (chk.checked ? 'badge-green' : 'badge-red');
+  lbl.textContent = chk.checked ? 'Present' : 'Absent';
+  renderAttSummary(); renderClassGrid(); renderAttDoughnut();
+}
+
+function saveAttendance() {
+  const dateStr = document.getElementById('att-date').value || todayStr();
+  if (!attendanceData[dateStr]) attendanceData[dateStr] = {};
+  students.forEach(s => {
+    const chk = document.getElementById('att-' + s.id);
+    if (chk) attendanceData[dateStr][s.id] = chk.checked ? 'present' : 'absent';
+  });
+  saveAttendance_store();
+  toast('Attendance saved for ' + dateStr, 'success');
+  addActivity(`Attendance marked for ${dateStr}`);
+}
+function saveAttendance_store() { localStorage.setItem('annapurna_attendance', JSON.stringify(attendanceData)); }
+
+function markAllPresent() {
+  students.forEach(s => {
+    const chk = document.getElementById('att-' + s.id);
+    if (chk) { chk.checked = true; const dateStr = document.getElementById('att-date').value || todayStr(); if (!attendanceData[dateStr]) attendanceData[dateStr] = {}; attendanceData[dateStr][s.id] = 'present'; }
+  });
+  document.querySelectorAll('[id^="att-lbl-"]').forEach(lbl => { lbl.className = 'badge badge-green'; lbl.textContent = 'Present'; });
+  renderAttSummary(); renderClassGrid(); renderAttDoughnut();
+}
+
+function markAllAbsent() {
+  students.forEach(s => {
+    const chk = document.getElementById('att-' + s.id);
+    if (chk) { chk.checked = false; const dateStr = document.getElementById('att-date').value || todayStr(); if (!attendanceData[dateStr]) attendanceData[dateStr] = {}; attendanceData[dateStr][s.id] = 'absent'; }
+  });
+  document.querySelectorAll('[id^="att-lbl-"]').forEach(lbl => { lbl.className = 'badge badge-red'; lbl.textContent = 'Absent'; });
+  renderAttSummary(); renderClassGrid(); renderAttDoughnut();
+}
+
+function renderAttDoughnut() {
+  const dateStr = document.getElementById('att-date').value || todayStr();
+  const att = attendanceData[dateStr] || {};
+  const present = Object.values(att).filter(v=>v==='present').length;
+  const absent = students.length - present;
+  if (charts['att-doughnut']) charts['att-doughnut'].destroy();
+  const ctx = document.getElementById('att-doughnut').getContext('2d');
+  charts['att-doughnut'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Present','Absent'],
+      datasets: [{ data:[present,absent], backgroundColor:['rgba(26,122,74,0.8)','rgba(244,131,31,0.6)'], borderWidth:0, hoverOffset:4 }]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}}, cutout:'65%' }
+  });
+}
+
+function exportAttendancePDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const dateStr = document.getElementById('att-date').value || todayStr();
+  const att = attendanceData[dateStr] || {};
+  doc.setFontSize(18); doc.setTextColor(244,131,31);
+  doc.text('Annapurna — Attendance Report', 14, 20);
+  doc.setFontSize(10); doc.setTextColor(100);
+  doc.text(`GPS Hyderabad No. 1 | Date: ${dateStr}`, 14, 28);
+  const rows = students.map((s,i) => [i+1, s.name, s.class, att[s.id]==='present'?'Present':'Absent']);
+  doc.autoTable({
+    startY: 34,
+    head: [['#','Name','Class','Status']],
+    body: rows,
+    styles:{ fontSize:9 },
+    headStyles:{ fillColor:[26,122,74], textColor:255 },
+    bodyStyles: (row) => ({ fillColor: row.cells[3].text === 'Present' ? [240,255,247] : [255,245,245] })
+  });
+  doc.save(`Attendance_${dateStr}.pdf`);
+  toast('Attendance PDF exported!', 'success');
+}
+
+// ═══════════════════════════════════════════
+// MEALS
+// ═══════════════════════════════════════════
+function initMeals() {
+  document.getElementById('meal-date').value = todayStr();
+  renderMealItems();
+  renderMealStats();
+  renderMealLogTable();
+}
+
+function renderMealItems() {
+  document.getElementById('meal-items-grid').innerHTML = MEAL_ITEMS.map((item, i) => `
+    <div class="meal-item-card">
+      <div class="mi-icon">${item.icon}</div>
+      <div class="mi-name">${item.name}</div>
+      <div class="mi-qty-row">
+        <input type="number" class="mi-qty-input" id="mi-${i}" value="0" min="0" step="0.5" onchange="renderMealStats()">
+        <span class="mi-unit">${item.unit}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderMealStats() {
+  const dateStr = document.getElementById('meal-date').value || todayStr();
+  const att = attendanceData[dateStr] || {};
+  const present = Object.values(att).filter(v=>v==='present').length;
+  const total = students.length;
+  const pct = total > 0 ? Math.round(present/total*100) : 0;
+  document.getElementById('meal-stats-body').innerHTML = `
+    <div class="quick-stat"><div class="qs-dot"></div><div class="qs-label">Students Enrolled</div><div class="qs-val">${total}</div></div>
+    <div class="quick-stat"><div class="qs-dot" style="background:var(--green)"></div><div class="qs-label">Present Today</div><div class="qs-val">${present}</div></div>
+    <div class="quick-stat"><div class="qs-dot" style="background:var(--blue-light)"></div><div class="qs-label">Meals to Serve</div><div class="qs-val">${present}</div></div>
+    <div class="quick-stat"><div class="qs-dot" style="background:var(--gold)"></div><div class="qs-label">Attendance Rate</div><div class="qs-val">${pct}%</div></div>
+    <div style="margin-top:12px">
+      <div class="progress-bar" style="height:8px">
+        <div class="progress-fill green" style="width:${pct}%"></div>
+      </div>
+      <div style="font-size:11px;color:var(--ink-soft);margin-top:4px;text-align:right">${pct}% coverage</div>
+    </div>
+  `;
+}
+
+function saveMealRecord() {
+  const dateStr = document.getElementById('meal-date').value || todayStr();
+  const menu = document.getElementById('meal-menu').value.trim() || 'Standard Meal';
+  const att = attendanceData[dateStr] || {};
+  const present = Object.values(att).filter(v=>v==='present').length;
+  const notes = document.getElementById('meal-notes').value;
+  const existing = mealLogs.findIndex(m => m.date === dateStr);
+  const entry = { date:dateStr, menu, enrolled:students.length, present, served:present, wastage:0, status:'Completed', notes };
+  if (existing >= 0) mealLogs[existing] = entry; else mealLogs.unshift(entry);
+  saveMeals();
+  renderMealLogTable();
+  toast('Meal record saved!', 'success');
+  addActivity(`Meal record saved: ${menu} for ${present} students`);
+}
+
+function renderMealLogTable() {
+  const sorted = [...mealLogs].sort((a,b) => b.date.localeCompare(a.date));
+  const tbody = document.getElementById('meal-log-tbody');
+  if (!sorted.length) { tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🍱</div><p>No records yet</p></div></td></tr>'; return; }
+  tbody.innerHTML = sorted.slice(0,30).map(m => {
+    const waste = m.served - (m.served - m.wastage);
+    const statusClass = m.status === 'Completed' ? 'badge-green' : m.status === 'Partial' ? 'badge-orange' : 'badge-red';
+    return `<tr>
+      <td><span class="table-id">${m.date}</span></td>
+      <td>${m.menu}</td>
+      <td>${m.enrolled}</td>
+      <td>${m.present}</td>
+      <td><strong>${m.served}</strong></td>
+      <td>${m.wastage || 0}</td>
+      <td><span class="badge ${statusClass}">${m.status}</span></td>
+      <td style="font-size:12px;color:var(--ink-soft)">${m.notes || '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function addMealLog() {
+  const date = document.getElementById('ml-date').value;
+  if (!date) { toast('Please select a date','error'); return; }
+  const entry = {
+    date, menu: document.getElementById('ml-menu').value || 'Standard Meal',
+    enrolled: students.length,
+    present: parseInt(document.getElementById('ml-present').value) || 0,
+    served: parseInt(document.getElementById('ml-served').value) || 0,
+    wastage: parseInt(document.getElementById('ml-waste').value) || 0,
+    status: document.getElementById('ml-status').value,
+    notes: document.getElementById('ml-notes').value
+  };
+  mealLogs.unshift(entry);
+  saveMeals();
+  renderMealLogTable();
+  closeModal('modal-add-meal-log');
+  toast('Meal log entry added!', 'success');
+}
+
+function exportMealsPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(18); doc.setTextColor(26,122,74);
+  doc.text('Annapurna — Meal Distribution Report', 14, 20);
+  doc.setFontSize(10); doc.setTextColor(100);
+  doc.text(`GPS Hyderabad No. 1 | Generated: ${new Date().toLocaleDateString()}`, 14, 28);
+  const sorted = [...mealLogs].sort((a,b) => b.date.localeCompare(a.date));
+  doc.autoTable({
+    startY: 34,
+    head: [['Date','Menu','Enrolled','Present','Served','Wastage','Status']],
+    body: sorted.map(m => [m.date, m.menu, m.enrolled, m.present, m.served, m.wastage||0, m.status]),
+    styles:{ fontSize:9 }, headStyles:{ fillColor:[26,122,74], textColor:255 }
+  });
+  doc.save('Meal_Distribution_Report.pdf');
+  toast('Meal PDF exported!', 'success');
+}
+
+// ═══════════════════════════════════════════
+// REPORTS
+// ═══════════════════════════════════════════
+let currentPeriod = 'week';
+function setPeriod(p, el) {
+  currentPeriod = p;
+  document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function initReports() {
+  const today = new Date();
+  const from = new Date(today); from.setDate(from.getDate() - 30);
+  document.getElementById('report-from').value = from.toISOString().split('T')[0];
+  document.getElementById('report-to').value = today.toISOString().split('T')[0];
+  generateReport();
+}
+
+function generateReport() {
+  const from = document.getElementById('report-from').value;
+  const to = document.getElementById('report-to').value;
+  const days = getDaysInRange(from, to);
+  const rows = [];
+  let totalPresent=0, totalAbsent=0, totalMeals=0, schoolDays=0;
+  days.forEach(d => {
+    const dt = new Date(d);
+    if (dt.getDay() === 0 || dt.getDay() === 6) return;
+    schoolDays++;
+    const att = attendanceData[d] || {};
+    const present = Object.values(att).filter(v=>v==='present').length;
+    const absent = students.length - present;
+    const pct = students.length > 0 ? Math.round(present/students.length*100) : 0;
+    const meal = mealLogs.find(m => m.date === d);
+    const mealsServed = meal ? meal.served : 0;
+    totalPresent += present; totalAbsent += absent; totalMeals += mealsServed;
+    rows.push({ date:d, day:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()], present, absent, meals:mealsServed, pct, status: pct >= 75 ? 'Good' : pct >= 50 ? 'Average' : 'Low' });
+  });
+
+  const avgPct = schoolDays > 0 ? Math.round(totalPresent / (schoolDays * Math.max(1, students.length)) * 100) : 0;
+  document.getElementById('report-metrics').innerHTML = `
+    <div class="quick-stat"><div class="qs-dot"></div><div class="qs-label">School Days in Period</div><div class="qs-val">${schoolDays}</div></div>
+    <div class="quick-stat"><div class="qs-dot" style="background:var(--green)"></div><div class="qs-label">Total Present Days</div><div class="qs-val">${totalPresent}</div></div>
+    <div class="quick-stat"><div class="qs-dot" style="background:var(--red)"></div><div class="qs-label">Total Absent Days</div><div class="qs-val">${totalAbsent}</div></div>
+    <div class="quick-stat"><div class="qs-dot" style="background:var(--blue-light)"></div><div class="qs-label">Total Meals Served</div><div class="qs-val">${totalMeals}</div></div>
+    <div class="quick-stat"><div class="qs-dot" style="background:var(--gold)"></div><div class="qs-label">Avg Attendance Rate</div><div class="qs-val">${avgPct}%</div></div>
+  `;
+
+  const tbody = document.getElementById('report-tbody');
+  tbody.innerHTML = rows.sort((a,b) => b.date.localeCompare(a.date)).map(r => `
+    <tr>
+      <td><span class="table-id">${r.date}</span></td>
+      <td>${r.day}</td>
+      <td><strong>${r.present}</strong></td>
+      <td>${r.absent}</td>
+      <td>${r.meals}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="progress-bar" style="height:6px;width:60px"><div class="progress-fill green" style="width:${r.pct}%"></div></div>
+          <span class="table-id">${r.pct}%</span>
+        </div>
+      </td>
+      <td><span class="badge ${r.status==='Good'?'badge-green':r.status==='Average'?'badge-orange':'badge-red'}">${r.status}</span></td>
+    </tr>
+  `).join('') || '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--ink-soft)">No data in selected range</td></tr>';
+}
+
+function exportReportPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const from = document.getElementById('report-from').value;
+  const to = document.getElementById('report-to').value;
+  doc.setFontSize(18); doc.setTextColor(26,82,118);
+  doc.text('Annapurna — Attendance & Meal Report', 14, 20);
+  doc.setFontSize(10); doc.setTextColor(100);
+  doc.text(`GPS Hyderabad No. 1 | Period: ${from} to ${to}`, 14, 28);
+  const days = getDaysInRange(from, to).filter(d => ![0,6].includes(new Date(d).getDay()));
+  const rows = days.sort((a,b) => b.localeCompare(a)).map(d => {
+    const att = attendanceData[d] || {};
+    const present = Object.values(att).filter(v=>v==='present').length;
+    const pct = students.length > 0 ? Math.round(present/students.length*100) : 0;
+    const meal = mealLogs.find(m=>m.date===d);
+    return [d, ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(d).getDay()], present, students.length-present, meal?meal.served:0, pct+'%'];
+  });
+  doc.autoTable({
+    startY: 34,
+    head: [['Date','Day','Present','Absent','Meals Served','Att %']],
+    body: rows,
+    styles:{ fontSize:9 }, headStyles:{ fillColor:[26,82,118], textColor:255 }
+  });
+  doc.save(`Report_${from}_to_${to}.pdf`);
+  toast('Report PDF exported!', 'success');
+}
+
+// ═══════════════════════════════════════════
+// CHARTS
+// ═══════════════════════════════════════════
+function renderCharts() {
+  const days30 = getLastNDays(30).filter(d => ![0,6].includes(new Date(d).getDay()));
+  const labels30 = days30.map(d => d.slice(5));
+  const present30 = days30.map(d => Object.values(attendanceData[d]||{}).filter(v=>v==='present').length);
+  const meals30 = days30.map(d => { const m = mealLogs.find(x=>x.date===d); return m ? m.served : 0; });
+
+  // Trend chart
+  if (charts['att-trend']) charts['att-trend'].destroy();
+  charts['att-trend'] = new Chart(document.getElementById('chart-att-trend').getContext('2d'), {
+    type:'line',
+    data:{ labels:labels30, datasets:[{ label:'Students Present', data:present30, borderColor:'rgba(26,122,74,1)', backgroundColor:'rgba(26,122,74,0.1)', borderWidth:2, fill:true, tension:0.4, pointRadius:2 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false},ticks:{maxTicksLimit:8}}, y:{grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true} } }
+  });
+
+  // Meal trend
+  if (charts['meal-trend']) charts['meal-trend'].destroy();
+  charts['meal-trend'] = new Chart(document.getElementById('chart-meal-trend').getContext('2d'), {
+    type:'bar',
+    data:{ labels:labels30, datasets:[{ label:'Meals Served', data:meals30, backgroundColor:'rgba(244,131,31,0.65)', borderRadius:4, borderSkipped:false }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false},ticks:{maxTicksLimit:8}}, y:{grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true} } }
+  });
+
+  // Class enrolment
+  const classData = CLASSES.map(c => students.filter(s=>s.class===c).length);
+  if (charts['class-enrol']) charts['class-enrol'].destroy();
+  charts['class-enrol'] = new Chart(document.getElementById('chart-class-enrol').getContext('2d'), {
+    type:'bar',
+    data:{ labels:CLASSES.map(c=>c.replace('Class ','')), datasets:[{ label:'Students', data:classData, backgroundColor:['#F4831F','#E8A526','#2EAB68','#1A7A4A','#2E86C1','#1A5276','#8E44AD','#C0392B'], borderRadius:6, borderSkipped:false }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false}}, y:{grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true} } }
+  });
+
+  // Gender
+  const male = students.filter(s=>s.gender==='Male').length;
+  const female = students.filter(s=>s.gender==='Female').length;
+  if (charts['gender']) charts['gender'].destroy();
+  charts['gender'] = new Chart(document.getElementById('chart-gender').getContext('2d'), {
+    type:'pie',
+    data:{ labels:['Male','Female'], datasets:[{ data:[male,female], backgroundColor:['rgba(26,82,118,0.8)','rgba(244,131,31,0.8)'], borderWidth:0, hoverOffset:4 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}}} }
+  });
+
+  // Monthly avg
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthlyData = months.map((_, mi) => {
+    const monthDays = Object.keys(attendanceData).filter(d => parseInt(d.split('-')[1])-1 === mi);
+    if (!monthDays.length) return 0;
+    const totalP = monthDays.reduce((s,d) => s + Object.values(attendanceData[d]).filter(v=>v==='present').length, 0);
+    return students.length > 0 ? Math.round(totalP / (monthDays.length * students.length) * 100) : 0;
+  });
+  if (charts['monthly-avg']) charts['monthly-avg'].destroy();
+  charts['monthly-avg'] = new Chart(document.getElementById('chart-monthly-avg').getContext('2d'), {
+    type:'line',
+    data:{ labels:months, datasets:[{ label:'Avg Att %', data:monthlyData, borderColor:'var(--saffron)', backgroundColor:'rgba(244,131,31,0.1)', borderWidth:2.5, fill:true, tension:0.4, pointBackgroundColor:'var(--saffron)', pointRadius:4 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{display:false}}, y:{grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true,max:100} } }
+  });
+
+  // Compare
+  if (charts['compare']) charts['compare'].destroy();
+  charts['compare'] = new Chart(document.getElementById('chart-compare').getContext('2d'), {
+    type:'line',
+    data:{ labels:labels30, datasets:[
+      { label:'Attendance', data:present30, borderColor:'rgba(26,122,74,0.9)', borderWidth:2.5, tension:0.4, pointRadius:2, yAxisID:'y' },
+      { label:'Meals Served', data:meals30, borderColor:'rgba(244,131,31,0.9)', borderWidth:2.5, tension:0.4, borderDash:[5,3], pointRadius:2, yAxisID:'y' }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:20}}}, scales:{ x:{grid:{display:false},ticks:{maxTicksLimit:10}}, y:{grid:{color:'rgba(0,0,0,0.04)'},beginAtZero:true} } }
+  });
+}
+
+function refreshCharts() { renderCharts(); toast('Charts refreshed!', 'success'); }
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+
+function getLastNDays(n) {
+  const days = [];
+  for (let i = n-1; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    days.push(d.toISOString().split('T')[0]);
+  }
+  return days;
+}
+
+function getDaysInRange(from, to) {
+  const days = []; let d = new Date(from);
+  while (d <= new Date(to)) { days.push(d.toISOString().split('T')[0]); d.setDate(d.getDate()+1); }
+  return days;
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function toast(msg, type='success') {
+  const wrap = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.innerHTML = (type==='success'?'✅':type==='error'?'❌':'ℹ️') + ' ' + msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+let activityLog = [];
+function addActivity(text) {
+  activityLog.unshift({ time: new Date().toLocaleTimeString(), text });
+  const tl = document.getElementById('activity-timeline');
+  if (tl) {
+    const item = document.createElement('div');
+    item.className = 'timeline-item done';
+    item.innerHTML = `<div class="timeline-dot"></div><div class="timeline-content"><div class="timeline-time">${activityLog[0].time}</div><div class="timeline-text">${text}</div></div>`;
+    tl.insertBefore(item, tl.firstChild);
+  }
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+});
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+function init() {
+  // Date
+  const now = new Date();
+  document.getElementById('topbar-date').textContent = now.toLocaleDateString('en-IN', {weekday:'short', year:'numeric', month:'short', day:'numeric'});
+
+  // Att date default
+  document.getElementById('att-date').value = todayStr();
+  document.getElementById('meal-date').value = todayStr();
+  document.getElementById('ml-date').value = todayStr();
+
+  seedData();
+  updateNavCount();
+  refreshDashboard();
+}
+
+init();
+</script>
+</body>
+</html>
